@@ -56,7 +56,6 @@ public class ExcelFilter {
                     }
                 }
             }
-            // Заменяем условие в строке на 1 или 0
             input = input.replace(matcher.group(0), matchFound ? "1" : "0");
 
 
