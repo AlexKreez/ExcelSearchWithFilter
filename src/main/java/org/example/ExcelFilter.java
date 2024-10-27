@@ -16,8 +16,6 @@ import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 public class ExcelFilter {
-
-    // Метод для чтения данных из Excel и проверки условий
     public static String InputChange(String input) throws IOException {
         FileInputStream file = new FileInputStream("C:/Users/Алексей/IdeaProjects/Airport/TryThis.xlsx");
         XSSFWorkbook workbook = new XSSFWorkbook(file);
@@ -27,7 +25,6 @@ public class ExcelFilter {
 
         List<Integer> matchingRowNumbers = new ArrayList<>();
 
-        // Проходим по каждому условию
         Matcher matcher = pattern.matcher(input);
         while (matcher.find()) {
             int columnIndex = Integer.parseInt(matcher.group(1)) - 1; // Преобразуем индекс
@@ -75,7 +72,6 @@ public class ExcelFilter {
         return input;
     }
 
-    // Оставшийся код остается без изменений
     public static boolean parseFilter(String input) {
         input = input.replaceAll("\\s+", "");
         Stack<Boolean> values = new Stack<>();
