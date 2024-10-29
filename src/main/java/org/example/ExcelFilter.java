@@ -22,7 +22,7 @@ public class ExcelFilter {
         XSSFWorkbook workbook = new XSSFWorkbook(file);
         XSSFSheet sheet = workbook.getSheetAt(0);
 
-        Pattern pattern = Pattern.compile("column\\[(\\d+)\\] = '([^']+)'");
+        Pattern pattern = Pattern.compile("column\\[(\\d+)] = '([^']+)'");
         List<Integer> matchingRowNumbers = new ArrayList<>();
 
         for (Row row : sheet) {
@@ -94,11 +94,11 @@ public class ExcelFilter {
     }
 
     private static boolean applyOperator(String operator, boolean b, boolean a) {
-        switch (operator) {
-            case "&": return a && b;
-            case "||": return a || b;
-            default: return false;
-        }
+        return switch (operator) {
+            case "&" -> a && b;
+            case "||" -> a || b;
+            default -> false;
+        };
     }
 
     public static void main(String[] args) throws IOException {
