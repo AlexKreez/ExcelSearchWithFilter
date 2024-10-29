@@ -16,59 +16,50 @@ import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 public class ExcelFilter {
-    public static String InputChange(String input) throws IOException {
-        FileInputStream file = new FileInputStream("C:/Users/Алексей/IdeaProjects/Airport/TryThis.xlsx");
+
+    public static List<Integer> InputChange(String input) throws IOException {
+        FileInputStream file = new FileInputStream("C:\\Users\\Алексей\\IdeaProjects\\Airport\\TryThis.xlsx");
         XSSFWorkbook workbook = new XSSFWorkbook(file);
         XSSFSheet sheet = workbook.getSheetAt(0);
 
         Pattern pattern = Pattern.compile("column\\[(\\d+)\\] = '([^']+)'");
-
         List<Integer> matchingRowNumbers = new ArrayList<>();
 
-        Matcher matcher = pattern.matcher(input);
-        while (matcher.find()) {
-            int columnIndex = Integer.parseInt(matcher.group(1)) - 1; // Преобразуем индекс
-            String expectedValue = matcher.group(2);
-            int matchingRowNumber = 0;
-            // Проверяем совпадения в таблице
-            boolean matchFound = false;
-            for (Row row : sheet) {
+        for (Row row : sheet) {
+            StringBuilder expressionForRow = new StringBuilder(input); // Копия строки
+
+            // Перемещение условиям из инпута
+            Matcher matcher = pattern.matcher(input);
+            while (matcher.find()) {
+                int columnIndex = Integer.parseInt(matcher.group(1)) - 1; // Индекс столбца
+                String expectedValue = matcher.group(2);
+
                 Cell cell = row.getCell(columnIndex);
-                if (cell != null && cell.getCellType() == CellType.STRING) {
-                    String cellValue = cell.getStringCellValue();
-                    System.out.println("Значение ячейки: " + cellValue);
-                    System.out.println("Значение из фильтра: " + expectedValue);
-                    if (cellValue.equals(expectedValue)) {
-                        matchFound = true;
-                        matchingRowNumbers.add(row.getRowNum() + 1);
-                        break;
+                boolean matchFound = false;
+
+                // Проверка
+                if (cell != null) {
+                    if (cell.getCellType() == CellType.STRING) {
+                        matchFound = cell.getStringCellValue().equals(expectedValue);
+                    } else if (cell.getCellType() == CellType.NUMERIC) {
+                        matchFound = Integer.toString((int) cell.getNumericCellValue()).equals(expectedValue);
                     }
                 }
-                if (cell != null && cell.getCellType() == CellType.NUMERIC) {
-                    int cellValue = (int) cell.getNumericCellValue();
-                    System.out.println("Значение ячейки: " + cellValue);
-                    System.out.println("Значение из фильтра: " + expectedValue);
-                    if (cellValue == Integer.parseInt(expectedValue)) {
-                        System.out.println("working!!!!!!!!!");
-                        matchFound = true;
-                        matchingRowNumbers.add(row.getRowNum() + 1);
-                        break;
-                    }
-                }
+
+                // Заменяем на "1" или "0" в строке
+                expressionForRow = new StringBuilder(expressionForRow.toString().replace(matcher.group(0), matchFound ? "1" : "0"));
             }
-            input = input.replace(matcher.group(0), matchFound ? "1" : "0");
 
-
+            // Если выражение для строки вычисляется как true, добавляем номер строки
+            if (parseFilter(expressionForRow.toString())) {
+                matchingRowNumbers.add(row.getRowNum() + 1);
+            }
         }
 
         workbook.close();
         file.close();
-        if (!matchingRowNumbers.isEmpty()) {
-            System.out.println("Строки, соответствующие условиям: " + matchingRowNumbers);
-        } else {
-            System.out.println("Совпадений не найдено.");
-        }
-        return input;
+
+        return matchingRowNumbers;
     }
 
     public static boolean parseFilter(String input) {
@@ -115,10 +106,8 @@ public class ExcelFilter {
         System.out.println("Введите значение для проверки:");
         String input = scanner.nextLine();
 
-        String processedInput = InputChange(input);
-        System.out.println("Преобразованная строка: " + processedInput);
-        boolean result = parseFilter(processedInput);
-        System.out.println("Результат: " + result);
+        List<Integer> matchingRows = InputChange(input);
+        System.out.println("Строки, подходящие под условия: " + matchingRows);
 
         scanner.close();
     }
