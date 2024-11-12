@@ -1,14 +1,14 @@
 package org.example;
 
-
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
+import java.util.Stack;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.Stack;
+
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.Row;
@@ -17,27 +17,103 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 public class ExcelFilter {
 
-    public static List<Integer> InputChange(String input) throws IOException {
-        FileInputStream file = new FileInputStream("C:\\Users\\Алексей\\IdeaProjects\\Airport\\TryThis.xlsx");
+
+    public static void main(String[] args) throws IOException {
+        Scanner scanner = new Scanner(System.in);
+        boolean running = true;
+
+        while (running) {
+            System.out.println("Введите наименование товара (или 'exit' для выхода):");
+            String input = InputChange(scanner.nextLine());
+
+            if (input.equalsIgnoreCase("exit")) {
+                running = false;
+                continue;
+            }
+
+            List<String> columnData = GetColumn();
+            List<Integer> matchingRows = ColumnParse(input, columnData);
+
+            System.out.println("Введите дополнительные фильтры (или 'exit' для выхода):");
+            String filter = scanner.nextLine();
+
+            if (filter.equalsIgnoreCase("exit")) {
+                running = false;
+                continue;
+            }
+
+            List<String> finalMatchingRows = TableSearch(matchingRows, filter);
+
+            System.out.println("Строки, подходящие под условия: ");
+            for (String rowContent : finalMatchingRows) {
+                System.out.println(rowContent);
+            }
+        }
+
+        scanner.close();
+        System.out.println("Программа завершена.");
+    }
+
+
+    public static List<String> GetColumn() throws IOException {
+        FileInputStream file = new FileInputStream("C:\\Users\\Алексей\\IdeaProjects\\Airport\\dataset.xlsx");
+        XSSFWorkbook workbook = new XSSFWorkbook(file);
+        XSSFSheet sheet = workbook.getSheetAt(0);
+
+        List<String> columnData = new ArrayList<>();
+
+        for (Row row : sheet) {
+            Cell cell = row.getCell(7);
+            if (cell != null  && cell.getCellType() == CellType.STRING) {
+                columnData.add(cell.getStringCellValue());
+            }
+        }
+
+        workbook.close();
+        file.close();
+        return columnData;
+    }
+
+
+    public static String InputChange(String input) {
+
+        return input;
+    }
+
+
+    public static List<Integer> ColumnParse(String input, List<String> columnData) {
+        List<Integer> matchingRows = new ArrayList<>();
+        for (int i = 0; i < columnData.size(); i++) {
+            if (columnData.get(i).equalsIgnoreCase(input)) {
+                System.out.println(i+2);
+                matchingRows.add(i + 2);
+            }
+        }
+        return matchingRows;
+    }
+
+
+    public static List<String> TableSearch(List<Integer> matchingRows, String filter) throws IOException {
+        FileInputStream file = new FileInputStream("C:\\Users\\Алексей\\IdeaProjects\\Airport\\dataset.xlsx");
         XSSFWorkbook workbook = new XSSFWorkbook(file);
         XSSFSheet sheet = workbook.getSheetAt(0);
 
         Pattern pattern = Pattern.compile("column\\[(\\d+)] = '([^']+)'");
-        List<Integer> matchingRowNumbers = new ArrayList<>();
+        List<String> matchingRowContents = new ArrayList<>();
+        for (int rowIndex : matchingRows) {
+            Row row = sheet.getRow(rowIndex - 1);
+            if (row == null) continue;
 
-        for (Row row : sheet) {
-            StringBuilder expressionForRow = new StringBuilder(input); // Копия строки
+            StringBuilder expressionForRow = new StringBuilder(filter);
+            Matcher matcher = pattern.matcher(filter);
 
-            // Перемещение условиям из инпута
-            Matcher matcher = pattern.matcher(input);
             while (matcher.find()) {
-                int columnIndex = Integer.parseInt(matcher.group(1)) - 1; // Индекс столбца
+                int columnIndex = Integer.parseInt(matcher.group(1)) - 1;
                 String expectedValue = matcher.group(2);
 
                 Cell cell = row.getCell(columnIndex);
                 boolean matchFound = false;
 
-                // Проверка
                 if (cell != null) {
                     if (cell.getCellType() == CellType.STRING) {
                         matchFound = cell.getStringCellValue().equals(expectedValue);
@@ -46,21 +122,33 @@ public class ExcelFilter {
                     }
                 }
 
-                // Заменяем на "1" или "0" в строке
                 expressionForRow = new StringBuilder(expressionForRow.toString().replace(matcher.group(0), matchFound ? "1" : "0"));
             }
-
-            // Если выражение для строки вычисляется как true, добавляем номер строки
             if (parseFilter(expressionForRow.toString())) {
-                matchingRowNumbers.add(row.getRowNum() + 1);
+                matchingRowContents.add(row.getRowNum()+ "||" + getRowContent(row) + "||");
             }
         }
 
         workbook.close();
         file.close();
 
-        return matchingRowNumbers;
+        return matchingRowContents;
     }
+
+    private static String getRowContent(Row row) {
+        StringBuilder rowContent = new StringBuilder();
+        for (Cell cell : row) {
+            if (cell.getCellType() == CellType.STRING) {
+                rowContent.append(cell.getStringCellValue()).append("\t");
+            } else if (cell.getCellType() == CellType.NUMERIC) {
+                rowContent.append(cell.getNumericCellValue()).append("\t");
+            } else {
+                rowContent.append("NULL").append("\t");
+            }
+        }
+        return rowContent.toString().trim();
+    }
+
 
     public static boolean parseFilter(String input) {
         input = input.replaceAll("\\s+", "");
@@ -85,14 +173,11 @@ public class ExcelFilter {
                 values.push(ch == '1');
             }
         }
-
         while (!operators.isEmpty()) {
             values.push(applyOperator(operators.pop(), values.pop(), values.pop()));
         }
-
         return values.pop();
     }
-
     private static boolean applyOperator(String operator, boolean b, boolean a) {
         return switch (operator) {
             case "&" -> a && b;
@@ -101,14 +186,6 @@ public class ExcelFilter {
         };
     }
 
-    public static void main(String[] args) throws IOException {
-        Scanner scanner = new Scanner(System.in);
-        System.out.println("Введите значение для проверки:");
-        String input = scanner.nextLine();
 
-        List<Integer> matchingRows = InputChange(input);
-        System.out.println("Строки, подходящие под условия: " + matchingRows);
 
-        scanner.close();
-    }
 }
